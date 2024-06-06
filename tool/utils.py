@@ -111,8 +111,21 @@ def plot_boxes_cv2(img, boxes, savename=None, class_names=None, color=None):
 
     width = img.shape[1]
     height = img.shape[0]
+    
+    if len(boxes) == 0:
+        return img
+    
+    print(f"boxes: {boxes} (plot_boxes_cv2)")
+    
     for i in range(len(boxes)):
         box = boxes[i]
+        if isinstance(box, list):
+            box = np.array(box)
+        print('box:', box)
+        if box.size == 0:
+            continue
+        if len(box.shape) == 2:
+            box = box[0]
         x1 = int(box[0] * width)
         y1 = int(box[1] * height)
         x2 = int(box[2] * width)
@@ -124,7 +137,7 @@ def plot_boxes_cv2(img, boxes, savename=None, class_names=None, color=None):
             rgb = (255, 0, 0)
         if len(box) >= 7 and class_names:
             cls_conf = box[5]
-            cls_id = box[6]
+            cls_id = int(box[6])
             print('%s: %f' % (class_names[cls_id], cls_conf))
             classes = len(class_names)
             offset = cls_id * 123457 % classes
@@ -137,9 +150,8 @@ def plot_boxes_cv2(img, boxes, savename=None, class_names=None, color=None):
             t_size = cv2.getTextSize(msg, 0, 0.7, thickness=bbox_thick // 2)[0]
             c1, c2 = (x1,y1), (x2, y2)
             c3 = (c1[0] + t_size[0], c1[1] - t_size[1] - 3)
-            cv2.rectangle(img, (x1,y1), (np.float32(c3[0]), np.float32(c3[1])), rgb, -1)
-            img = cv2.putText(img, msg, (c1[0], np.float32(c1[1] - 2)), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0,0,0), bbox_thick//2,lineType=cv2.LINE_AA)
-        
+            cv2.rectangle(img, (x1,y1), (int(c3[0]), int(c3[1])), rgb, -1)
+            img = cv2.putText(img, msg, (int(c1[0]), int(c1[1] - 2)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), bbox_thick//2, lineType=cv2.LINE_AA)
         img = cv2.rectangle(img, (x1, y1), (x2, y2), rgb, bbox_thick)
     if savename:
         print("save plot results to %s" % savename)
@@ -170,7 +182,7 @@ def load_class_names(namesfile):
 
 
 def post_processing(img, conf_thresh, nms_thresh, output):
-
+    _ = img
     # anchors = [12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401]
     # num_anchors = 9
     # anchor_masks = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]

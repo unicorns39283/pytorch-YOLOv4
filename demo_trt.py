@@ -80,21 +80,21 @@ def allocate_buffers(engine, batch_size):
     stream = cuda.Stream()
     for binding in engine:
 
-        size = trt.volume(engine.get_binding_shape(binding)) * batch_size
-        dims = engine.get_binding_shape(binding)
+        size = trt.volume(engine.get_tensor_shape(binding)) * batch_size
+        dims = engine.get_tensor_shape(binding)
         
         # in case batch dimension is -1 (dynamic)
         if dims[0] < 0:
             size *= -1
         
-        dtype = trt.nptype(engine.get_binding_dtype(binding))
+        dtype = trt.nptype(engine.get_tensor_dtype(binding))
         # Allocate host and device buffers
         host_mem = cuda.pagelocked_empty(size, dtype)
         device_mem = cuda.mem_alloc(host_mem.nbytes)
         # Append the device buffer to device bindings.
         bindings.append(int(device_mem))
         # Append to the appropriate list.
-        if engine.binding_is_input(binding):
+        if engine.get_tensor_mode(binding) == trt.TensorIOMode.INPUT:
             inputs.append(HostDeviceMem(host_mem, device_mem))
         else:
             outputs.append(HostDeviceMem(host_mem, device_mem))
@@ -106,7 +106,7 @@ def do_inference(context, bindings, inputs, outputs, stream):
     # Transfer input data to the GPU.
     [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
     # Run inference.
-    context.execute_async(bindings=bindings, stream_handle=stream.handle)
+    context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
     # Transfer predictions back from the GPU.
     [cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
     # Synchronize the stream
@@ -125,7 +125,7 @@ def main(engine_path, image_path, image_size):
 
         image_src = cv2.imread(image_path)
 
-        num_classes = 80
+        num_classes = 2
 
         for i in range(2):  # This 'for' loop is for speed check
                             # Because the first iteration is usually longer
@@ -135,6 +135,8 @@ def main(engine_path, image_path, image_size):
             namesfile = 'data/voc.names'
         elif num_classes == 80:
             namesfile = 'data/coco.names'
+        elif num_classes == 2:
+            namesfile = '../classes.txt'
         else:
             namesfile = 'data/names'
 
